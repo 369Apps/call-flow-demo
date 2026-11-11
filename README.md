@@ -1,26 +1,29 @@
 # Call flow demo
 
-A small working demo of an AI phone call flowing into a CRM, for a setup where several agencies share one system.
+A small working demo of an AI phone call flowing into a CRM, for a setup where several agencies share one system. Built so a prospect can try it alone, with a short walkthrough on the page.
 
 Live: https://call-flow-demo.news-ce2.workers.dev
 
-Built by No BS AI as a demo. Test data only. The 555-01xx numbers are reserved test numbers.
+Built by Bobby, No BS AI. A public demo of a call-to-CRM flow. Test data only. The 555-01xx numbers are reserved test numbers. Not a client build.
 
 ## What it shows
 
-1. **Voice agent.** Start a call in the browser. The agent talks out loud and you answer by voice (Chrome) or by typing.
+1. **Voice agent.** Start a call in the browser. The agent talks out loud and you answer by voice (Chrome) or by typing. Typed answers work with no mic, on a phone or a computer.
 2. **Call result to CRM.** When the call ends, one event goes to the server. It creates or updates the contact, adds tags and a note, and queues a text-back.
-3. **No duplicates.** The call ID is the primary key in D1 and the insert is atomic. Send the same event again, or two copies at the same moment, and only one is processed. The duplicate gets a 200 so Vapi or Telnyx stop retrying.
+3. **No duplicates.** The call ID is the primary key in D1 (scoped to the visitor's sandbox) and the insert is atomic. Send the same event again, or two copies at the same moment, and only one is processed. The duplicate gets a 200 so Vapi or Telnyx stop retrying.
 4. **Per-agency routing and usage.** The dialed number picks the agency. Every event is tagged to its agency, and the page totals calls, minutes, texts and blocked duplicates per agency for billing. The same caller phone in two agencies stays two separate contacts, like two GHL sub-accounts.
+
+Each visitor gets their own sandbox, keyed by a session ID in localStorage. "Clear my demo data" removes only that session.
 
 ## Endpoints
 
-- `POST /api/events`: a call result from the browser or a test.
-- `POST /webhooks/vapi`: Vapi `end-of-call-report` (uses `call.id`, `phoneNumber.number`, `customer.number`, `analysis`). Optional `x-vapi-secret` check.
-- `POST /webhooks/telnyx`: Telnyx `call.hangup` (uses `call_session_id`, `to`, `from`).
-- `GET /api/state`, `GET /api/config`, `POST /api/reset`.
+- `POST /api/events`: a call result from the browser or a test. Requires `x-demo-session`.
+- `POST /webhooks/vapi`: Vapi `end-of-call-report` (uses `call.id`, `phoneNumber.number`, `customer.number`, `analysis`). Optional `x-vapi-secret` check. No session header. Stored under a reserved webhook session.
+- `POST /webhooks/telnyx`: Telnyx `call.hangup` (uses `call_session_id`, `to`, `from`). No session header.
+- `GET /api/state`, `POST /api/reset`: require `x-demo-session` and only read or clear that session.
+- `GET /api/config`: public, no session.
 
-All three sources go through one function, so routing and duplicate rules are the same everywhere.
+All three event sources go through one function, so routing and duplicate rules are the same everywhere. Event and webhook routes are rate limited per IP and session, and each sandbox has a row cap.
 
 ## Live vs simulated, honestly
 
@@ -43,6 +46,7 @@ In live CRM mode it calls the GHL API v2: `POST /contacts/upsert`, `POST /contac
 ## Deploy
 
 ```
+npx wrangler d1 execute call-flow-demo --remote --file migrate.sql
 npx wrangler d1 execute call-flow-demo --remote --file schema.sql
 npx wrangler deploy
 npx wrangler secret put VAPI_PUBLIC_KEY   # optional, and the others above

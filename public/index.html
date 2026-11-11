@@ -8,30 +8,40 @@
 <style>
   :root { --bg:#0f172a; --card:#111827; --line:#1f2937; --text:#e5e7eb; --muted:#9ca3af; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; }
   * { box-sizing: border-box; }
-  body { margin:0; font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--text); }
-  header { padding:16px 24px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
-  h1 { font-size:18px; margin:0; }
-  h2 { font-size:14px; margin:0 0 10px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  body { margin:0; font:16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:16px 24px 8px; }
+  h1 { font-size:20px; margin:0 0 8px; }
+  h2 { font-size:13px; margin:0 0 10px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .badges { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0; }
   .badge { padding:3px 8px; border-radius:999px; font-size:12px; border:1px solid var(--line); }
   .live { background:#052e16; color:#86efac; border-color:#166534; }
   .sim { background:#3b2a05; color:#fcd34d; border-color:#92400e; }
+  .note { background:#3b2a05; border:1px solid #92400e; color:#fde68a; border-radius:10px; padding:12px 14px; margin:12px 24px 0; font-size:14px; }
+  .note p { margin:0 0 6px; } .note p:last-child { margin:0; }
+  .walk { margin:16px 24px 0; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  .walk h2 { color:var(--text); text-transform:none; letter-spacing:0; font-size:16px; }
+  .steps { margin:8px 0 0; padding-left:22px; }
+  .steps li { margin:0 0 12px; }
+  .steps li:last-child { margin:0; }
+  .proves { color:var(--muted); font-size:14px; margin-top:2px; }
   main { display:grid; grid-template-columns: 380px 1fr; gap:16px; padding:16px 24px; }
-  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } header, .note, .walk, main, footer { padding-left:16px; padding-right:16px; } .note, .walk { margin-left:16px; margin-right:16px; } }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:16px; }
   label { display:block; font-size:12px; color:var(--muted); margin:8px 0 4px; }
-  input, select { width:100%; padding:8px; background:#0b1220; color:var(--text); border:1px solid var(--line); border-radius:6px; }
-  button { padding:8px 12px; border-radius:6px; border:1px solid #334155; background:#1e293b; color:var(--text); cursor:pointer; font-weight:600; }
+  input, select { width:100%; padding:10px 8px; background:#0b1220; color:var(--text); border:1px solid var(--line); border-radius:6px; font-size:16px; }
+  button { padding:10px 12px; min-height:40px; border-radius:6px; border:1px solid #334155; background:#1e293b; color:var(--text); cursor:pointer; font-weight:600; font-size:15px; }
   button.primary { background:#2563eb; border-color:#2563eb; }
   button.danger { background:#7f1d1d; border-color:#7f1d1d; }
   button:disabled { opacity:.5; cursor:not-allowed; }
   .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
-  .chat { height:220px; overflow:auto; background:#0b1220; border:1px solid var(--line); border-radius:6px; padding:8px; margin-top:10px; }
+  .chat { height:220px; overflow:auto; background:#0b1220; border:1px solid var(--line); border-radius:6px; padding:8px; margin-top:10px; font-size:14px; }
   .msg { margin:4px 0; }
-  .msg.agent b { color:#93c5fd; } .msg.caller b { color:#86efac; } .msg.sys { color:var(--muted); font-size:12px; }
+  .msg.agent b { color:#93c5fd; } .msg.caller b { color:#86efac; } .msg.sys { color:var(--muted); font-size:13px; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
   th { color:var(--muted); font-weight:500; }
   .agencies { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width: 600px) { .agencies { grid-template-columns:1fr; } .table-wrap { overflow-x:auto; } }
   .agency { border-radius:8px; padding:12px; border:1px solid var(--line); }
   .num { font-size:22px; font-weight:700; }
   .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:6px; }
@@ -40,15 +50,47 @@
   .k-duplicate { color:var(--warn); font-weight:600; } .k-error,.k-rejected { color:var(--bad); font-weight:600; }
   .k-routed { color:#93c5fd; } .muted { color:var(--muted); } code { font-size:12px; }
   .result { margin-top:8px; font-size:13px; padding:8px; border-radius:6px; background:#0b1220; border:1px solid var(--line); white-space:pre-wrap; }
+  footer { padding:8px 24px 24px; color:var(--muted); font-size:13px; }
 </style>
 </head>
 <body>
 <header>
   <h1>Call flow demo: AI call to CRM, per agency</h1>
-  <span id="voiceBadge" class="badge">Voice: ...</span>
-  <span id="crmBadge" class="badge">CRM: ...</span>
-  <span class="muted">Test data only. Numbers 555-01xx are reserved test numbers.</span>
+  <div class="badges">
+    <span id="voiceBadge" class="badge">Voice: ...</span>
+    <span id="crmBadge" class="badge">CRM: ...</span>
+    <span class="muted">Test data only. Numbers 555-01xx are reserved test numbers. This is your own sandbox, not shared with other visitors.</span>
+  </div>
 </header>
+<div class="note">
+  <p>Webhooks, routing, duplicate blocking and usage counts are live. Voice uses the browser's voice and the CRM writes to a stand-in table instead of GHL. The real GHL API calls are in the code and go live once test sub-account tokens are added.</p>
+  <p>Chrome is best if you want to use voice. Typed answers work the same on any phone or computer, with no mic needed.</p>
+</div>
+<section class="walk">
+  <h2>Try it yourself (about 3 minutes)</h2>
+  <ol class="steps">
+    <li>
+      <strong>Call Agency A.</strong> Pick "Agency A line" and press "Start voice call". Answer with your name, what you need, and yes. Or press "Quick test (no voice)" to skip the talking.
+      <div class="proves">What this proves: a call result is sent to the server with the call ID, the number dialed, and the caller's number.</div>
+    </li>
+    <li>
+      <strong>See it land in the CRM.</strong> Watch the contacts table and the event log on the right (below, on a phone).
+      <div class="proves">What this proves: the call creates a contact, adds tags and a note, and queues a text-back.</div>
+    </li>
+    <li>
+      <strong>Resend the same event.</strong> Press "Resend same event".
+      <div class="proves">What this proves: the same call ID is skipped, so no second contact, note, or text is created.</div>
+    </li>
+    <li>
+      <strong>Send 2 copies at once.</strong> Press "Send 2 copies at once".
+      <div class="proves">What this proves: even two copies at the same moment make only one contact. The duplicate still gets a 200, so Vapi or Telnyx stop retrying.</div>
+    </li>
+    <li>
+      <strong>Switch to Agency B.</strong> Pick "Agency B line" and press "Quick test (no voice)" with the same caller phone.
+      <div class="proves">What this proves: the same caller on a different agency is a separate contact, and each agency has its own usage count for billing.</div>
+    </li>
+  </ol>
+</section>
 <main>
   <section>
     <div class="card">
@@ -56,17 +98,18 @@
       <label>Number dialed (picks the agency)</label>
       <select id="dialed"></select>
       <label>Caller name</label>
-      <input id="callerName" value="Test Caller">
+      <input id="callerName" value="Test Caller" autocomplete="name">
       <label>Caller phone</label>
-      <input id="callerPhone" value="+1 555 010 9001">
+      <input id="callerPhone" value="+1 555 010 9001" inputmode="tel" autocomplete="tel">
       <div class="row">
         <button class="primary" id="startBtn">Start voice call</button>
         <button id="endBtn" disabled>End call</button>
         <button id="quickBtn">Quick test (no voice)</button>
       </div>
-      <div class="chat" id="chat"><div class="msg sys">Press Start voice call. The agent talks out loud. Answer by voice (Chrome) or type below.</div></div>
+      <div class="chat" id="chat"><div class="msg sys">Press Start voice call. The agent talks out loud. Answer by voice (Chrome) or type below and press Send.</div></div>
       <div class="row">
-        <input id="reply" placeholder="Type the caller's answer and press Enter" style="flex:1">
+        <input id="reply" placeholder="Type the caller's answer" style="flex:1" autocomplete="off" enterkeyhint="send">
+        <button id="sendBtn">Send</button>
         <button id="micBtn" title="Answer by voice">Mic</button>
       </div>
     </div>
@@ -82,7 +125,8 @@
     </div>
     <div class="card">
       <h2>Reset</h2>
-      <button class="danger" id="resetBtn">Clear demo data</button>
+      <div class="muted">Clears only your sandbox, not other visitors.</div>
+      <div class="row"><button class="danger" id="resetBtn">Clear my demo data</button></div>
     </div>
   </section>
   <section>
@@ -92,17 +136,42 @@
     </div>
     <div class="card">
       <h2>4. CRM contacts</h2>
-      <table><thead><tr><th>Agency</th><th>Name</th><th>Phone</th><th>Tags</th><th>Calls</th><th>Notes</th><th>Updated</th></tr></thead><tbody id="contacts"></tbody></table>
+      <div class="table-wrap"><table><thead><tr><th>Agency</th><th>Name</th><th>Phone</th><th>Tags</th><th>Calls</th><th>Notes</th><th>Updated</th></tr></thead><tbody id="contacts"></tbody></table></div>
     </div>
     <div class="card">
       <h2>5. Event log (newest first)</h2>
-      <table><thead><tr><th>Time</th><th>Call ID</th><th>Agency</th><th>Step</th><th>Detail</th></tr></thead><tbody id="log"></tbody></table>
+      <div class="table-wrap"><table><thead><tr><th>Time</th><th>Call ID</th><th>Agency</th><th>Step</th><th>Detail</th></tr></thead><tbody id="log"></tbody></table></div>
     </div>
   </section>
 </main>
+<footer>Built by Bobby, No BS AI. A public demo of a call-to-CRM flow. Test data only. Not a client build.</footer>
 <script type="module">
 const $ = (id) => document.getElementById(id);
-let cfg = null, lastEvent = null, call = null, vapi = null;
+const SESSION_KEY = "cfd_session";
+let cfg = null, lastEvent = null, call = null, vapi = null, memSession = null;
+
+function getSession() {
+  try {
+    let id = localStorage.getItem(SESSION_KEY);
+    if (!id || !/^s_[A-Za-z0-9-]+$/.test(id)) {
+      id = "s_" + crypto.randomUUID();
+      localStorage.setItem(SESSION_KEY, id);
+    }
+    return id;
+  } catch {
+    if (!memSession) memSession = "s_" + crypto.randomUUID();
+    return memSession;
+  }
+}
+
+async function api(path, opts) {
+  const headers = Object.assign({ "x-demo-session": getSession() }, (opts && opts.headers) || {});
+  const r = await fetch(path, Object.assign({}, opts || {}, { headers }));
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok && !data.status && !data.error) data.error = "Request failed (" + r.status + ")";
+  data._http = r.status;
+  return data;
+}
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const t = (iso) => iso ? new Date(iso).toLocaleTimeString() : "";
@@ -122,8 +191,9 @@ async function loadConfig() {
 }
 
 async function refresh() {
-  const s = await (await fetch("/api/state")).json();
-  const bill = Object.fromEntries(s.billing.map(b => [b.agency, b]));
+  const s = await api("/api/state");
+  if (s.error || !s.contacts) return;
+  const bill = Object.fromEntries((s.billing || []).map(b => [b.agency, b]));
   $("agencies").innerHTML = cfg.agencies.map(a => {
     const b = bill[a.key] || { calls:0, seconds:0, texts:0, duplicates_blocked:0 };
     return `<div class="agency" style="border-color:${a.color}">
@@ -154,17 +224,31 @@ function say(who, text) {
   $("chat").appendChild(div); $("chat").scrollTop = 1e9;
 }
 
+function unlockSpeech() {
+  if (!("speechSynthesis" in window)) return;
+  try { speechSynthesis.cancel(); } catch {}
+}
+
 function speak(text) {
   return new Promise(res => {
     if (!("speechSynthesis" in window)) return res();
-    const u = new SpeechSynthesisUtterance(text); u.rate = 1.05; u.onend = res; u.onerror = res;
-    speechSynthesis.speak(u);
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.05;
+      u.onend = res;
+      u.onerror = res;
+      speechSynthesis.speak(u);
+    } catch {
+      res();
+    }
   });
 }
 
 async function postEvent(ev) {
-  const r = await fetch("/api/events", { method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify(ev) });
-  return r.json();
+  const r = await api("/api/events", { method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify(ev) });
+  if (r.error && !r.status) r.status = "error";
+  return r;
 }
 
 function setLast(ev) {
@@ -196,11 +280,19 @@ async function onCallerAnswer(text) {
   call.step++; await agentTurn();
 }
 
+function submitReply() {
+  const input = $("reply");
+  const text = input.value;
+  input.value = "";
+  onCallerAnswer(text);
+}
+
 async function startSimCall() {
+  unlockSpeech();
   const dialed = $("dialed").value;
   const agency = cfg.agencies.find(a => a.number === dialed);
   call = { id: "sim_" + crypto.randomUUID(), dialed, agency: agency.name, name: $("callerName").value, need: "", callback: true, step: 0, started: Date.now() };
-  $("chat").innerHTML = ""; say("sys", `Call started. Call ID ${call.id}`);
+  $("chat").innerHTML = ""; say("sys", `Call started. Call ID ${call.id}. Type your answers if the mic is off.`);
   $("startBtn").disabled = true; $("endBtn").disabled = false;
   await agentTurn();
 }
@@ -217,17 +309,18 @@ async function finishCall() {
   };
   say("sys", "Call ended. Sending the call result to the CRM...");
   const r = await postEvent(ev); setLast(ev);
-  say("sys", `Server: ${r.status}${r.agency ? " for " + r.agency : ""}${r.crm ? " (" + r.crm.steps.map(s => s.step).join(", ") + ")" : ""}`);
-  refresh();
+  if (r.error && r.status !== "processed" && r.status !== "duplicate") say("sys", "Server: " + (r.reason || r.error));
+  else say("sys", `Server: ${r.status}${r.agency ? " for " + r.agency : ""}${r.crm ? " (" + r.crm.steps.map(s => s.step).join(", ") + ")" : ""}`);
+  try { await refresh(); } catch {}
 }
 
 // ---- Vapi live mode ----
 async function startVapiCall() {
   const { default: Vapi } = await import("https://esm.sh/@vapi-ai/web");
   vapi = vapi || new Vapi(cfg.vapiPublicKey);
-  $("chat").innerHTML = ""; say("sys", "Connecting to the Vapi assistant. Allow the mic.");
+  $("chat").innerHTML = ""; say("sys", "Connecting to the Vapi assistant. Allow the mic, or type answers if it fails.");
   vapi.on("message", (m) => { if (m.type === "transcript" && m.transcriptType === "final") say(m.role === "assistant" ? "agent" : "caller", m.transcript); });
-  vapi.on("call-end", () => { $("startBtn").disabled = false; $("endBtn").disabled = true; say("sys", "Call ended. Vapi sends the end-of-call report to /webhooks/vapi."); setTimeout(refresh, 4000); });
+  vapi.on("call-end", () => { $("startBtn").disabled = false; $("endBtn").disabled = true; say("sys", "Call ended. Vapi sends the end-of-call report to /webhooks/vapi."); setTimeout(() => { refresh().catch(() => {}); }, 4000); });
   $("startBtn").disabled = true; $("endBtn").disabled = false;
   const c = await vapi.start(cfg.vapiAssistantId, { metadata: { dialed: $("dialed").value, caller_phone: $("callerPhone").value, caller_name: $("callerName").value } });
   if (c?.id) { say("sys", `Vapi call ID ${c.id}`); setLast({ call_id: c.id, dialed: $("dialed").value, caller_phone: $("callerPhone").value, caller_name: $("callerName").value, outcome: "callback", summary: "Replay of Vapi call", duration_sec: 0 }); }
@@ -235,32 +328,44 @@ async function startVapiCall() {
 
 $("startBtn").onclick = () => cfg.voice === "vapi" ? startVapiCall() : startSimCall();
 $("endBtn").onclick = () => vapi && cfg.voice === "vapi" ? vapi.stop() : finishCall();
-$("reply").onkeydown = (e) => { if (e.key === "Enter") { onCallerAnswer(e.target.value); e.target.value = ""; } };
+$("sendBtn").onclick = submitReply;
+$("reply").onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); submitReply(); } };
 $("micBtn").onclick = () => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return say("sys", "Voice input needs Chrome. Type the answer instead.");
+  if (!SR) { say("sys", "Voice input needs Chrome. Type the answer instead, then press Send."); return; }
   const rec = new SR(); rec.lang = "en-US"; rec.interimResults = false;
-  $("micBtn").textContent = "Listening..."; rec.onend = () => $("micBtn").textContent = "Mic";
+  $("micBtn").textContent = "Listening..."; rec.onend = () => { $("micBtn").textContent = "Mic"; };
+  rec.onerror = () => { $("micBtn").textContent = "Mic"; say("sys", "Mic did not work. Type the answer instead, then press Send."); };
   rec.onresult = (e) => onCallerAnswer(e.results[0][0].transcript);
-  rec.start();
+  try { rec.start(); } catch { $("micBtn").textContent = "Mic"; say("sys", "Mic did not start. Type the answer instead."); }
 };
 $("quickBtn").onclick = async () => {
   const ev = { call_id: "sim_" + crypto.randomUUID(), dialed: $("dialed").value, caller_phone: $("callerPhone").value, caller_name: $("callerName").value, outcome: "callback", summary: "Quick test call. Caller asked for a callback.", duration_sec: 45 };
   const r = await postEvent(ev); setLast(ev);
-  $("chat").innerHTML = ""; say("sys", `Quick test ${ev.call_id}: ${r.status} for ${r.agency || "none"}`); refresh();
+  $("chat").innerHTML = ""; say("sys", r.error && r.status !== "processed" && r.status !== "duplicate" ? ("Quick test failed: " + (r.reason || r.error)) : `Quick test ${ev.call_id}: ${r.status} for ${r.agency || "none"}`);
+  try { await refresh(); } catch {}
 };
 $("dupBtn").onclick = async () => {
   const r = await postEvent(lastEvent);
-  $("dupResult").hidden = false; $("dupResult").textContent = `Resent ${lastEvent.call_id}\nServer said: ${r.status}${r.action ? " (" + r.action + ")" : ""}`; refresh();
+  $("dupResult").hidden = false; $("dupResult").textContent = `Resent ${lastEvent.call_id}\nServer said: ${r.status}${r.action ? " (" + r.action + ")" : ""}${r.error && r.status !== "duplicate" ? " " + (r.reason || r.error) : ""}`;
+  try { await refresh(); } catch {}
 };
 $("dup2Btn").onclick = async () => {
   const ev = { ...lastEvent, call_id: "sim_" + crypto.randomUUID() };
   const rs = await Promise.all([postEvent(ev), postEvent(ev)]); setLast(ev);
-  $("dupResult").hidden = false; $("dupResult").textContent = `Fired 2 copies of new call ${ev.call_id} at the same moment\nCopy 1: ${rs[0].status}\nCopy 2: ${rs[1].status}`; refresh();
+  $("dupResult").hidden = false; $("dupResult").textContent = `Fired 2 copies of new call ${ev.call_id} at the same moment\nCopy 1: ${rs[0].status}\nCopy 2: ${rs[1].status}`;
+  try { await refresh(); } catch {}
 };
-$("resetBtn").onclick = async () => { if (confirm("Clear all demo data?")) { await fetch("/api/reset", { method:"POST" }); $("dupResult").hidden = true; refresh(); } };
+$("resetBtn").onclick = async () => {
+  if (!confirm("Clear only your demo data on this device?")) return;
+  await api("/api/reset", { method:"POST" });
+  $("dupResult").hidden = true; lastEvent = null; $("lastId").textContent = "none yet";
+  $("dupBtn").disabled = true; $("dup2Btn").disabled = true;
+  try { await refresh(); } catch {}
+};
 
-await loadConfig(); await refresh(); setInterval(refresh, 3000);
+try { await loadConfig(); await refresh(); } catch { say("sys", "Could not load the demo. Refresh the page."); }
+setInterval(() => { refresh().catch(() => {}); }, 3000);
 </script>
 </body>
 </html>
