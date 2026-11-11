@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Call flow demo</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { --bg:#0f172a; --card:#111827; --line:#1f2937; --text:#e5e7eb; --muted:#9ca3af; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:16px 24px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  h1 { font-size:18px; margin:0; }
+  h2 { font-size:14px; margin:0 0 10px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .badge { padding:3px 8px; border-radius:999px; font-size:12px; border:1px solid var(--line); }
+  .live { background:#052e16; color:#86efac; border-color:#166534; }
+  .sim { background:#3b2a05; color:#fcd34d; border-color:#92400e; }
+  main { display:grid; grid-template-columns: 380px 1fr; gap:16px; padding:16px 24px; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:16px; }
+  label { display:block; font-size:12px; color:var(--muted); margin:8px 0 4px; }
+  input, select { width:100%; padding:8px; background:#0b1220; color:var(--text); border:1px solid var(--line); border-radius:6px; }
+  button { padding:8px 12px; border-radius:6px; border:1px solid #334155; background:#1e293b; color:var(--text); cursor:pointer; font-weight:600; }
+  button.primary { background:#2563eb; border-color:#2563eb; }
+  button.danger { background:#7f1d1d; border-color:#7f1d1d; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .chat { height:220px; overflow:auto; background:#0b1220; border:1px solid var(--line); border-radius:6px; padding:8px; margin-top:10px; }
+  .msg { margin:4px 0; }
+  .msg.agent b { color:#93c5fd; } .msg.caller b { color:#86efac; } .msg.sys { color:var(--muted); font-size:12px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:500; }
+  .agencies { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .agency { border-radius:8px; padding:12px; border:1px solid var(--line); }
+  .num { font-size:22px; font-weight:700; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:6px; }
+  .stats div span { display:block; color:var(--muted); font-size:11px; }
+  .pill { display:inline-block; padding:1px 6px; border-radius:4px; font-size:11px; margin:1px; background:#1e293b; }
+  .k-duplicate { color:var(--warn); font-weight:600; } .k-error,.k-rejected { color:var(--bad); font-weight:600; }
+  .k-routed { color:#93c5fd; } .muted { color:var(--muted); } code { font-size:12px; }
+  .result { margin-top:8px; font-size:13px; padding:8px; border-radius:6px; background:#0b1220; border:1px solid var(--line); white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Call flow demo: AI call to CRM, per agency</h1>
+  <span id="voiceBadge" class="badge">Voice: ...</span>
+  <span id="crmBadge" class="badge">CRM: ...</span>
+  <span class="muted">Test data only. Numbers 555-01xx are reserved test numbers.</span>
+</header>
+<main>
+  <section>
+    <div class="card">
+      <h2>1. Place a test call</h2>
+      <label>Number dialed (picks the agency)</label>
+      <select id="dialed"></select>
+      <label>Caller name</label>
+      <input id="callerName" value="Test Caller">
+      <label>Caller phone</label>
+      <input id="callerPhone" value="+1 555 010 9001">
+      <div class="row">
+        <button class="primary" id="startBtn">Start voice call</button>
+        <button id="endBtn" disabled>End call</button>
+        <button id="quickBtn">Quick test (no voice)</button>
+      </div>
+      <div class="chat" id="chat"><div class="msg sys">Press Start voice call. The agent talks out loud. Answer by voice (Chrome) or type below.</div></div>
+      <div class="row">
+        <input id="reply" placeholder="Type the caller's answer and press Enter" style="flex:1">
+        <button id="micBtn" title="Answer by voice">Mic</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>2. Duplicate test</h2>
+      <div class="muted">Resend the last call's event with the same call ID. It must not create a second contact, note or text.</div>
+      <div>Last call ID: <code id="lastId">none yet</code></div>
+      <div class="row">
+        <button id="dupBtn" disabled>Resend same event</button>
+        <button id="dup2Btn" disabled>Send 2 copies at once</button>
+      </div>
+      <div class="result" id="dupResult" hidden></div>
+    </div>
+    <div class="card">
+      <h2>Reset</h2>
+      <button class="danger" id="resetBtn">Clear demo data</button>
+    </div>
+  </section>
+  <section>
+    <div class="card">
+      <h2>3. Agencies and usage for billing</h2>
+      <div class="agencies" id="agencies"></div>
+    </div>
+    <div class="card">
+      <h2>4. CRM contacts</h2>
+      <table><thead><tr><th>Agency</th><th>Name</th><th>Phone</th><th>Tags</th><th>Calls</th><th>Notes</th><th>Updated</th></tr></thead><tbody id="contacts"></tbody></table>
+    </div>
+    <div class="card">
+      <h2>5. Event log (newest first)</h2>
+      <table><thead><tr><th>Time</th><th>Call ID</th><th>Agency</th><th>Step</th><th>Detail</th></tr></thead><tbody id="log"></tbody></table>
+    </div>
+  </section>
+</main>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+let cfg = null, lastEvent = null, call = null, vapi = null;
+
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const t = (iso) => iso ? new Date(iso).toLocaleTimeString() : "";
+const agencyName = (k) => cfg?.agencies.find(a => a.key === k)?.name || k || "none";
+const agencyColor = (k) => cfg?.agencies.find(a => a.key === k)?.color || "#334155";
+
+async function loadConfig() {
+  cfg = await (await fetch("/api/config")).json();
+  const vb = $("voiceBadge");
+  vb.textContent = cfg.voice === "vapi" ? "Voice: Vapi live" : "Voice: simulated (browser voice, scripted agent)";
+  vb.className = "badge " + (cfg.voice === "vapi" ? "live" : "sim");
+  const live = cfg.agencies.filter(a => a.crm === "live").length;
+  const cb = $("crmBadge");
+  cb.textContent = live === cfg.agencies.length ? "CRM: GHL live" : live ? "CRM: GHL live for some agencies" : "CRM: simulated GHL (same steps, no API key)";
+  cb.className = "badge " + (live ? "live" : "sim");
+  $("dialed").innerHTML = cfg.agencies.map(a => `<option value="${a.number}">${a.name} line: ${a.number}</option>`).join("");
+}
+
+async function refresh() {
+  const s = await (await fetch("/api/state")).json();
+  const bill = Object.fromEntries(s.billing.map(b => [b.agency, b]));
+  $("agencies").innerHTML = cfg.agencies.map(a => {
+    const b = bill[a.key] || { calls:0, seconds:0, texts:0, duplicates_blocked:0 };
+    return `<div class="agency" style="border-color:${a.color}">
+      <div style="color:${a.color};font-weight:700">${a.name}</div>
+      <div class="muted">Line ${a.number} | CRM ${a.crm}</div>
+      <div class="stats">
+        <div><span>Calls</span><div class="num">${b.calls}</div></div>
+        <div><span>Minutes</span><div class="num">${(b.seconds/60).toFixed(1)}</div></div>
+        <div><span>Texts</span><div class="num">${b.texts}</div></div>
+        <div><span>Dupes blocked</span><div class="num">${b.duplicates_blocked}</div></div>
+      </div></div>`;
+  }).join("");
+  $("contacts").innerHTML = s.contacts.map(c => `<tr>
+    <td style="color:${agencyColor(c.agency)}">${esc(agencyName(c.agency))}</td><td>${esc(c.name)}</td><td>${esc(c.phone)}</td>
+    <td>${(c.tags||"").split(",").filter(Boolean).map(x=>`<span class="pill">${esc(x)}</span>`).join("")}</td>
+    <td>${c.calls}</td><td>${c.notes}</td><td>${t(c.updated_at)}</td></tr>`).join("") || `<tr><td colspan="7" class="muted">No contacts yet</td></tr>`;
+  $("log").innerHTML = s.log.map(l => {
+    let d = l.detail; try { const o = JSON.parse(d); d = o.step ? `${o.step}${o.contactId ? " ("+o.contactId+")" : ""}${o.tags ? ": "+o.tags.join(", ") : ""}${o.text ? ': "'+o.text+'"' : ""}` : d; } catch {}
+    return `<tr><td>${t(l.ts)}</td><td><code>${esc(l.call_id)}</code></td><td>${esc(agencyName(l.agency))}</td>
+      <td class="k-${esc(l.kind.split(":")[0])}">${esc(l.kind)}</td><td>${esc(d)}</td></tr>`;
+  }).join("") || `<tr><td colspan="5" class="muted">No events yet</td></tr>`;
+}
+
+function say(who, text) {
+  const div = document.createElement("div");
+  div.className = "msg " + who;
+  div.innerHTML = who === "sys" ? esc(text) : `<b>${who === "agent" ? "Agent" : "Caller"}:</b> ${esc(text)}`;
+  $("chat").appendChild(div); $("chat").scrollTop = 1e9;
+}
+
+function speak(text) {
+  return new Promise(res => {
+    if (!("speechSynthesis" in window)) return res();
+    const u = new SpeechSynthesisUtterance(text); u.rate = 1.05; u.onend = res; u.onerror = res;
+    speechSynthesis.speak(u);
+  });
+}
+
+async function postEvent(ev) {
+  const r = await fetch("/api/events", { method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify(ev) });
+  return r.json();
+}
+
+function setLast(ev) {
+  lastEvent = ev; $("lastId").textContent = ev.call_id;
+  $("dupBtn").disabled = false; $("dup2Btn").disabled = false;
+}
+
+// ---- Simulated voice agent (scripted). Same event shape a Vapi end-of-call report gives. ----
+const STEPS = [
+  (c) => `Hi, thanks for calling ${c.agency}. I'm the after-hours assistant. Who am I speaking with?`,
+  (c) => `Thanks ${c.name}. What can we help you with today?`,
+  () => `Got it. Should we text you and call you back at this number?`,
+  (c) => c.callback ? `Great. You'll get a text in a moment, and the team will call you back. Goodbye.` : `No problem. I've noted it for the team. Goodbye.`,
+];
+
+async function agentTurn() {
+  const line = STEPS[call.step](call);
+  say("agent", line); await speak(line);
+  if (call.step === STEPS.length - 1) return finishCall();
+  $("reply").focus();
+}
+
+async function onCallerAnswer(text) {
+  if (!call || !text.trim()) return;
+  say("caller", text);
+  if (call.step === 0) call.name = text.replace(/^(this is|it's|i'm|my name is)\s+/i, "").trim() || call.name;
+  if (call.step === 1) call.need = text.trim();
+  if (call.step === 2) call.callback = !/^\s*no\b/i.test(text);
+  call.step++; await agentTurn();
+}
+
+async function startSimCall() {
+  const dialed = $("dialed").value;
+  const agency = cfg.agencies.find(a => a.number === dialed);
+  call = { id: "sim_" + crypto.randomUUID(), dialed, agency: agency.name, name: $("callerName").value, need: "", callback: true, step: 0, started: Date.now() };
+  $("chat").innerHTML = ""; say("sys", `Call started. Call ID ${call.id}`);
+  $("startBtn").disabled = true; $("endBtn").disabled = false;
+  await agentTurn();
+}
+
+async function finishCall() {
+  if (!call) return;
+  const c = call; call = null;
+  $("startBtn").disabled = false; $("endBtn").disabled = true;
+  const ev = {
+    call_id: c.id, dialed: c.dialed, caller_phone: $("callerPhone").value, caller_name: c.name,
+    outcome: c.callback ? "callback" : "handled",
+    summary: `Caller asked about: ${c.need || "not given"}. Wants callback: ${c.callback ? "yes" : "no"}.`,
+    duration_sec: Math.max(1, Math.round((Date.now() - c.started) / 1000)),
+  };
+  say("sys", "Call ended. Sending the call result to the CRM...");
+  const r = await postEvent(ev); setLast(ev);
+  say("sys", `Server: ${r.status}${r.agency ? " for " + r.agency : ""}${r.crm ? " (" + r.crm.steps.map(s => s.step).join(", ") + ")" : ""}`);
+  refresh();
+}
+
+// ---- Vapi live mode ----
+async function startVapiCall() {
+  const { default: Vapi } = await import("https://esm.sh/@vapi-ai/web");
+  vapi = vapi || new Vapi(cfg.vapiPublicKey);
+  $("chat").innerHTML = ""; say("sys", "Connecting to the Vapi assistant. Allow the mic.");
+  vapi.on("message", (m) => { if (m.type === "transcript" && m.transcriptType === "final") say(m.role === "assistant" ? "agent" : "caller", m.transcript); });
+  vapi.on("call-end", () => { $("startBtn").disabled = false; $("endBtn").disabled = true; say("sys", "Call ended. Vapi sends the end-of-call report to /webhooks/vapi."); setTimeout(refresh, 4000); });
+  $("startBtn").disabled = true; $("endBtn").disabled = false;
+  const c = await vapi.start(cfg.vapiAssistantId, { metadata: { dialed: $("dialed").value, caller_phone: $("callerPhone").value, caller_name: $("callerName").value } });
+  if (c?.id) { say("sys", `Vapi call ID ${c.id}`); setLast({ call_id: c.id, dialed: $("dialed").value, caller_phone: $("callerPhone").value, caller_name: $("callerName").value, outcome: "callback", summary: "Replay of Vapi call", duration_sec: 0 }); }
+}
+
+$("startBtn").onclick = () => cfg.voice === "vapi" ? startVapiCall() : startSimCall();
+$("endBtn").onclick = () => vapi && cfg.voice === "vapi" ? vapi.stop() : finishCall();
+$("reply").onkeydown = (e) => { if (e.key === "Enter") { onCallerAnswer(e.target.value); e.target.value = ""; } };
+$("micBtn").onclick = () => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return say("sys", "Voice input needs Chrome. Type the answer instead.");
+  const rec = new SR(); rec.lang = "en-US"; rec.interimResults = false;
+  $("micBtn").textContent = "Listening..."; rec.onend = () => $("micBtn").textContent = "Mic";
+  rec.onresult = (e) => onCallerAnswer(e.results[0][0].transcript);
+  rec.start();
+};
+$("quickBtn").onclick = async () => {
+  const ev = { call_id: "sim_" + crypto.randomUUID(), dialed: $("dialed").value, caller_phone: $("callerPhone").value, caller_name: $("callerName").value, outcome: "callback", summary: "Quick test call. Caller asked for a callback.", duration_sec: 45 };
+  const r = await postEvent(ev); setLast(ev);
+  $("chat").innerHTML = ""; say("sys", `Quick test ${ev.call_id}: ${r.status} for ${r.agency || "none"}`); refresh();
+};
+$("dupBtn").onclick = async () => {
+  const r = await postEvent(lastEvent);
+  $("dupResult").hidden = false; $("dupResult").textContent = `Resent ${lastEvent.call_id}\nServer said: ${r.status}${r.action ? " (" + r.action + ")" : ""}`; refresh();
+};
+$("dup2Btn").onclick = async () => {
+  const ev = { ...lastEvent, call_id: "sim_" + crypto.randomUUID() };
+  const rs = await Promise.all([postEvent(ev), postEvent(ev)]); setLast(ev);
+  $("dupResult").hidden = false; $("dupResult").textContent = `Fired 2 copies of new call ${ev.call_id} at the same moment\nCopy 1: ${rs[0].status}\nCopy 2: ${rs[1].status}`; refresh();
+};
+$("resetBtn").onclick = async () => { if (confirm("Clear all demo data?")) { await fetch("/api/reset", { method:"POST" }); $("dupResult").hidden = true; refresh(); } };
+
+await loadConfig(); await refresh(); setInterval(refresh, 3000);
+</script>
+</body>
+</html>

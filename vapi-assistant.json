@@ -1,0 +1,30 @@
+{
+  "name": "Call Flow Demo Agent",
+  "firstMessage": "Hi, thanks for calling. I'm the after-hours assistant. Who am I speaking with?",
+  "model": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You answer calls after hours for a local service business. Get the caller's name, what they need, and whether they want a text and a callback at this number. Keep every answer short and spoken. Never promise prices or times. End the call politely once you have the three answers."
+      }
+    ]
+  },
+  "voice": { "provider": "vapi", "voiceId": "Elliot" },
+  "server": { "url": "https://call-flow-demo.news-ce2.workers.dev/webhooks/vapi" },
+  "serverMessages": ["end-of-call-report"],
+  "analysisPlan": {
+    "structuredDataPlan": {
+      "enabled": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "caller_name": { "type": "string" },
+          "callback_number": { "type": "string" },
+          "wants_callback": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}
