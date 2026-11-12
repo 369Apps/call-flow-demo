@@ -4,6 +4,9 @@
   "compatibility_date": "2026-10-01",
   "account_id": "ce24ade1292a201e1e0bf396b384eaaf",
   "workers_dev": true,
+  "routes": [
+    { "pattern": "demo.nobsai.com", "custom_domain": true }
+  ],
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*", "/webhooks/*"] },
   "d1_databases": [
     { "binding": "DB", "database_name": "call-flow-demo", "database_id": "efdf362b-ae28-4378-b01c-bbbdd1896b8e" }
